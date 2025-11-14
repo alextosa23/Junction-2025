@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
 class PreferenceCreate(BaseModel):
     device_id: str
     name: str
+    location: Dict[str, float]
     activities: List[str]
     topics: List[str]
     chat_times: List[str]
@@ -15,6 +16,7 @@ class PreferenceCreate(BaseModel):
 
 class PreferenceUpdate(BaseModel):
     name: Optional[str] = None
+    location: Optional[Dict[str, float]] = None
     activities: Optional[List[str]] = None
     topics: Optional[List[str]] = None
     chat_times: Optional[List[str]] = None
@@ -26,6 +28,7 @@ class Preference(BaseModel):
     id: str
     device_id: str
     name: str
+    location: Dict[str, float]
     activities: List[str]
     topics: List[str]
     chat_times: List[str]
