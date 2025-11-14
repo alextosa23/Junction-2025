@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
+import * as Location from "expo-location";
 
 export type OnboardingData = {
   name: string;
@@ -58,6 +59,11 @@ const goalOptions = [
   "Memory-friendly activities",
 ];
 
+type Coords = {
+  latitude: number;
+  longitude: number;
+};
+
 const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
   const [step, setStep] = useState<number>(0);
 
@@ -70,6 +76,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
   const [chatTime, setChatTime] = useState<string | null>(null);
   const [activityPlace, setActivityPlace] = useState<string | null>(null);
   const [goals, setGoals] = useState<string[]>([]);
+
+  // 👉 location-related state
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [hasFetchedLocation, setHasFetchedLocation] = useState(false);
 
   const totalSteps = 8; // 0–7
 
@@ -85,6 +96,33 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
     }
   };
 
+  // 👉 Expo location logic
+  const getUserLocation = async () => {
+    try {
+      // Permission (Expo / expo-location)
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== "granted") {
+        setLocationError("Location permission not granted");
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const lat = loc.coords.latitude;
+      const lon = loc.coords.longitude;
+
+      setCoords({ latitude: lat, longitude: lon });
+      setLocation(`${lat}, ${lon}`); // save as string for your OnboardingData
+      setLocationError(null);
+    } catch (err) {
+      console.error("Location error", err);
+      setLocationError("Could not get location");
+    }
+  };
+
   const canGoNext = (): boolean => {
     switch (step) {
       case 0:
@@ -92,7 +130,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
       case 1:
         return age.trim().length > 0;
       case 2:
-        return location.trim().length > 0;
+        // Now we rely on coords instead of manual text input
+        return coords !== null;
       case 3:
         return activities.length > 0;
       case 4:
@@ -162,16 +201,31 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
           </>
         );
       case 2:
+        // auto-run location fetch once when entering step 2
+        if (!hasFetchedLocation) {
+          setHasFetchedLocation(true);
+          void getUserLocation();
+        }
+
         return (
           <>
-            <Text style={styles.questionText}>Where do you live?</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="City / area"
-              placeholderTextColor="#6B7280"
-              value={location}
-              onChangeText={setLocation}
-            />
+            <Text style={styles.questionText}>
+              {coords ? "Location detected:" : "Detecting your location…"}
+            </Text>
+
+            {coords && (
+              <Text style={styles.helperText}>
+                Lat: {coords.latitude}
+                {"\n"}
+                Lon: {coords.longitude}
+              </Text>
+            )}
+
+            {locationError && (
+              <Text style={[styles.helperText, { color: "red" }]}>
+                {locationError}
+              </Text>
+            )}
           </>
         );
       case 3:
@@ -271,7 +325,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Progress text */}
         <Text style={styles.progressText}>
           Question {step + 1} of {totalSteps}
         </Text>
@@ -287,7 +340,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
           <TouchableOpacity
             style={[
               styles.navButton,
-              ! (step > 0) && styles.navButtonDisabled,
+              !(step > 0) && styles.navButtonDisabled,
             ]}
             onPress={handleBack}
             disabled={step === 0}
@@ -362,7 +415,7 @@ const OptionButton: React.FC<OptionButtonProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F3F4F6", // light gray, good contrast
+    backgroundColor: "#F3F4F6",
   },
   container: {
     flex: 1,
@@ -370,65 +423,65 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   progressText: {
-    fontSize: 18,
+    fontSize: 22,
     color: "#4B5563",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   content: {
     paddingVertical: 16,
   },
   questionText: {
-    fontSize: 24, // big font
+    fontSize: 32,
     fontWeight: "700",
-    color: "#111827", // almost black
-    marginBottom: 16,
+    color: "#111827",
+    marginBottom: 22,
   },
   helperText: {
-    fontSize: 18,
+    fontSize: 24,
     color: "#4B5563",
-    marginBottom: 12,
+    marginBottom: 18,
   },
   input: {
-    fontSize: 20,
+    fontSize: 26,
     borderWidth: 2,
     borderColor: "#9CA3AF",
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     backgroundColor: "#FFFFFF",
     color: "#111827",
   },
   optionButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: "#D1D5DB",
     backgroundColor: "#FFFFFF",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   optionButtonSelected: {
-    backgroundColor: "#1D4ED8", // blue
+    backgroundColor: "#1D4ED8",
     borderColor: "#1D4ED8",
   },
   optionButtonText: {
-    fontSize: 20,
+    fontSize: 24,
     color: "#111827",
   },
   optionButtonTextSelected: {
     color: "#FFFFFF",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
-    marginTop: 16,
+    gap: 16,
+    marginTop: 20,
   },
   navButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 14,
     backgroundColor: "#111827",
     alignItems: "center",
   },
@@ -436,9 +489,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#9CA3AF",
   },
   navButtonText: {
-    fontSize: 20,
+    fontSize: 26,
     color: "#FFFFFF",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   navButtonTextDisabled: {
     color: "#E5E7EB",
