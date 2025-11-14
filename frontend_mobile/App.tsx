@@ -1,20 +1,27 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from "react";
+import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
+import WelcomeScreen from "./src/screens/WelcomeScreen";
 
 export default function App() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [profile, setProfile] = useState<OnboardingData | null>(null);
+
+  if (!showOnboarding) {
+    return (
+      <WelcomeScreen
+        onStartOnboarding={() => {
+          setShowOnboarding(true);
+        }}
+      />
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <Onboarding
+      onFinish={(data) => {
+        setProfile(data);
+        console.log("Onboarding finished:", data);
+      }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
