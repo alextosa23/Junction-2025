@@ -87,6 +87,7 @@ class FirestoreService:
             "id": preference_id,
             "device_id": preference_data.get("device_id"),
             "name": preference_data.get("name"),
+            "location": preference_data.get("location"),
             "activities": preference_data.get("activities"),
             "topics": preference_data.get("topics"),
             "chat_times": preference_data.get("chat_times"),
