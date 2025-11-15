@@ -2,5 +2,12 @@ fastapi
 uvicorn[standard]
 firebase-admin
 pydantic-settings
+<<<<<<< Updated upstream
 google-cloud-speech
 python-multipart
+=======
+python-multipart
+pillow
+pytesseract
+openai
+>>>>>>> Stashed changes

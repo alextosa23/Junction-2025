@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes import events, attendances
 from app.routes import recommendations
+from app.routes import aihelper
 from app.models.preference import PreferenceCreate, Preference
 from app.services.firestore import get_firestore
 
@@ -61,6 +62,7 @@ app.add_middleware(
 app.include_router(events.router)
 app.include_router(attendances.router)
 app.include_router(recommendations.router)
+app.include_router(aihelper.router)
 # ❌ do NOT include preferences.router; we're defining /preferences right here
 
 

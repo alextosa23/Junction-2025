@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from typing import Optional
 import json
 
 
@@ -7,6 +8,7 @@ class Settings(BaseSettings):
     firebase_project_id: str
     firebase_client_email: str
     firestore_collection: str = "events"
+    openai_api_key: Optional[str] = None
     
     debug: bool = False
     host: str = "0.0.0.0"
