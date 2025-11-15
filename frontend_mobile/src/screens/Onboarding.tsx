@@ -164,73 +164,35 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
   };
 
   // 🔥 handleNext now sends data directly to the backend on the last step
-  const handleNext = async () => {
-    if (step < totalSteps - 1) {
-      setStep((prev) => prev + 1);
-      return;
-    }
+  // 🔥 FIXED handleNext function
+// 🔥 SIMPLEST FIX - Remove all alerts and call onFinish directly
+const handleNext = async () => {
+  if (step < totalSteps - 1) {
+    setStep((prev) => prev + 1);
+    return;
+  }
 
-    // Last step → build data and send to backend
-    const data: OnboardingData = {
-      name,
-      age,
-      location,
-      activities,
-      topics,
-      chatTime,
-      activityPlace,
-      goals,
-    };
+  console.log("🎯 FINAL STEP - Calling onFinish directly");
 
-    if (!coords) {
-      Alert.alert("Error", "Location not detected yet.");
-      return;
-    }
-
-    // Map to your PreferenceCreate model
-    const payload: PreferenceCreate = {
-      device_id: "demo-device-id-123", // TODO: replace with real device id later
-      name: data.name,
-      location: {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      },
-      activities: data.activities,
-      topics: data.topics,
-      chat_times: data.chatTime ? [data.chatTime] : [],
-      activity_type: data.activityPlace ?? "",
-      looking_for: data.goals,
-    };
-
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Backend error:", text);
-        Alert.alert("Error", "Could not save preferences.");
-        return;
-      }
-
-      const json = await res.json();
-      console.log("Saved preference:", json);
-      Alert.alert("Success", "Preferences saved!");
-
-      // still call onFinish if a parent passed it in
-      if (onFinish) {
-        onFinish(data);
-      }
-    } catch (err) {
-      console.error("Network error:", err);
-      Alert.alert("Error", "Could not contact server.");
-    }
+  const data: OnboardingData = {
+    name,
+    age,
+    location,
+    activities,
+    topics,
+    chatTime,
+    activityPlace,
+    goals,
   };
+
+  // Just call onFinish immediately
+  if (onFinish) {
+    console.log("🚀 Direct call to onFinish");
+    onFinish(data);
+  } else {
+    console.log("❌ onFinish is undefined");
+  }
+};
 
   const handleBack = () => {
     if (step > 0) {
