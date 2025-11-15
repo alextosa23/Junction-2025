@@ -19,6 +19,7 @@ export type ActivityCategory = {
 type CategorySelectionProps = {
   userData: any;
   onCategoriesSelected: (selectedCategories: ActivityCategory[]) => void;
+  onAddEvent: () => void;
 };
 
 // These would come from your ML model based on onboarding data
@@ -64,6 +65,7 @@ const RECOMMENDED_CATEGORIES: ActivityCategory[] = [
 export const CategorySelection: React.FC<CategorySelectionProps> = ({
   userData,
   onCategoriesSelected,
+  onAddEvent,
 }) => {
   const [selectedCategories, setSelectedCategories] = useState<ActivityCategory[]>([]);
 
@@ -78,7 +80,7 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
     });
   };
 
-  const handleContinue = () => {
+  const handleContinue = () => {  
     if (selectedCategories.length === 0) {
       alert("Please select at least one category to continue");
       return;
@@ -94,7 +96,7 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
           Based on your profile, we recommend these categories. Select the ones that interest you most.
         </Text>
 
-        <ScrollView style={styles.categoriesContainer}>
+        {/* <ScrollView style={styles.categoriesContainer}>
           {RECOMMENDED_CATEGORIES.map((category) => {
             const isSelected = selectedCategories.find(c => c.id === category.id);
             return (
@@ -136,6 +138,66 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
             Continue to App ({selectedCategories.length} selected)
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.addButton} onPress={onAddEvent}>
+          <Text style={styles.addButtonText}>Add Event</Text>
+        </TouchableOpacity> */}
+
+        <ScrollView
+          style={styles.categoriesContainer}
+          contentContainerStyle={{ paddingBottom: 300 }} 
+        >
+          {RECOMMENDED_CATEGORIES.map((category) => {
+            const isSelected = selectedCategories.find(c => c.id === category.id);
+            return (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryCard,
+                  isSelected && styles.categoryCardSelected,
+                ]}
+                onPress={() => toggleCategory(category)}
+              >
+                <Text style={styles.categoryIcon}>{category.icon}</Text>
+                <View style={styles.categoryTextContainer}>
+                  <Text style={styles.categoryName}>{category.name}</Text>
+                  <Text style={styles.categoryDescription}>
+                    {category.description}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.selectionIndicator,
+                    isSelected && styles.selectionIndicatorSelected,
+                  ]}
+                >
+                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              selectedCategories.length === 0 && styles.continueButtonDisabled,
+            ]}
+            onPress={handleContinue}
+            disabled={selectedCategories.length === 0}
+          >
+            <Text style={styles.continueButtonText}>
+              Continue to App ({selectedCategories.length} selected)
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.addButton} onPress={onAddEvent}>
+            <Text style={styles.addButtonText}>Add Event</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+
+
       </View>
     </SafeAreaView>
   );
@@ -232,6 +294,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#FFFFFF",
     fontWeight: "600",
+  },
+  addButton: {
+    marginTop: 20,
+    paddingVertical: 16,
+    backgroundColor: "#2563EB",
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "700",  
   },
 });
 
