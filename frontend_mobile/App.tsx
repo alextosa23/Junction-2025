@@ -13,11 +13,13 @@ import VoiceButton from "./src/screens/VoiceButton";
 import VoiceScreen from "./src/screens/VoiceScreen";
 import CameraButton from "./src/screens/CameraButton";
 import PhotoHelpScreen from "./src/screens/PhotoHelpScreen";
+import CategoryEvents from "./src/screens/CategoryEvents";
 
 type AppState = {
   hasCompletedOnboarding: boolean;
   hasSelectedCategories: boolean;
   profile: OnboardingData | null;
+  selectedCategorie: String | null;
 };
 
 Notifications.setNotificationHandler({
@@ -39,6 +41,7 @@ export default function App() {
     hasCompletedOnboarding: false,
     hasSelectedCategories: false,
     profile: null,
+    selectedCategorie: null,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,6 +71,7 @@ export default function App() {
             hasCompletedOnboarding: false,
             hasSelectedCategories: false,
             profile: null,
+            selectedCategorie: null,
           });
         }
       } catch (error) {
@@ -76,6 +80,7 @@ export default function App() {
           hasCompletedOnboarding: false,
           hasSelectedCategories: false,
           profile: null,
+          selectedCategorie: null,
         });
       } finally {
         setIsLoading(false);
@@ -167,7 +172,12 @@ export default function App() {
       <CategorySelection
         userData={appState.profile}
         onCategoriesSelected={(categories) =>
-          saveAppState({ hasSelectedCategories: true })
+          saveAppState({
+            hasCompletedOnboarding: true,
+             hasSelectedCategories: true,
+             profile: appState.profile,
+             selectedCategorie: categories,
+             })
         }
         onShowEvents={() => setShowEvents(true)}
         onAddEvent={() => setShowAddEvent(true)}
@@ -176,6 +186,21 @@ export default function App() {
       />
     );
   }
+
+  if (appState.hasSelectedCategories && appState.selectedCategorie) {
+  return (
+    <CategoryEvents
+      categoryName= {appState.selectedCategorie}   // ✅ pass the name
+      onBack={() => {
+        // If you want back to category selection:
+        saveAppState({
+          hasSelectedCategories: false,
+          selectedCategorie: null,
+        });
+      }}
+    />
+  );
+}
 
   // Main app - user has completed everything
   return (
