@@ -13,6 +13,7 @@ async def create_preference(preference: PreferenceCreate):
         preference_data = {
             "device_id": preference.device_id,
             "name": preference.name,
+            "age": preference.age,
             "location": preference.location,
             "activities": preference.activities,
             "topics": preference.topics,
