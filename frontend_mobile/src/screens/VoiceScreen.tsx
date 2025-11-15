@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { Audio } from "expo-av";
+import * as Speech from 'expo-speech';
 
 type VoiceScreenProps = {
   onBack: () => void;
@@ -43,36 +44,38 @@ const VoiceScreen: React.FC<VoiceScreenProps> = ({ onBack }) => {
     return () => loop.stop();
   }, [scale]);
 
-  const startRecording = async () => {
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Microphone needed",
-          "Please allow microphone access so you can talk to Bondy."
-        );
-        return;
-      }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+const startRecording = async () => {
+  try {
+    const { status } = await Audio.requestPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Microphone needed",
+        "Please allow microphone access so you can talk to Bondy."
       );
-      await rec.startAsync();
-
-      setRecording(rec);
-      setTranscript("");
-      setIsRecording(true);
-    } catch (e) {
-      console.log("Error starting recording:", e);
-      Alert.alert("Error", "Could not start recording.");
+      return;
     }
-  };
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+
+    const rec = new Audio.Recording();
+
+    // ✅ Just use Expo's built-in preset – usually AAC/M4A on iOS
+    await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+    await rec.startAsync();
+
+    setRecording(rec);
+    setTranscript("");
+    setIsRecording(true);
+    console.log("✅ Recording started with HIGH_QUALITY");
+  } catch (e) {
+    console.log("Error starting recording:", e);
+    Alert.alert("Error", "Could not start recording.");
+  }
+};
 
   const stopRecording = async () => {
     if (!recording) return;
@@ -106,46 +109,126 @@ const VoiceScreen: React.FC<VoiceScreenProps> = ({ onBack }) => {
 
   // 👇 Call your backend STT service here
   const sendToBackend = async (fileUri: string) => {
-    try {
-      setIsSending(true);
-      setTranscript("Transcribing…");
+  try {
+    console.log("🎯 1. sendToBackend STARTED, fileUri:", fileUri);
 
-      const formData = new FormData();
-      formData.append("audio", {
-        uri: fileUri,
-        name: "recording.m4a",
-        type: "audio/m4a",
-      } as any);
+    setIsSending(true);
+    setTranscript("Transcribing…");
 
-      // TODO: replace this with your real backend URL
-      const response = await fetch(
-        "https://YOUR_BACKEND_URL_HERE/transcribe",
-        {
-          method: "POST",
-          body: formData,
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+    // Read audio file and convert to base64
+    const response = await fetch(fileUri);
+    const blob = await response.blob();
+    console.log("🎯 2. Blob size:", blob.size, "type:", blob.type);
+    
+    // Get file info from URI
+    console.log("🎯 2a. File URI:", fileUri);
+    console.log("🎯 2b. File extension:", fileUri.split('.').pop());
+    
+    // Convert blob to base64
+    const reader = new FileReader();
+    const audioBase64 = await new Promise<string>((resolve) => {
+      reader.onloadend = () => {
+        const fullResult = reader.result as string;
+        console.log("🎯 3. Full Data URL prefix:", fullResult.split(',')[0]);
+        console.log("🎯 3a. Full Data URL length:", fullResult.length);
+        // Remove data URL prefix
+        const base64 = fullResult.split(',')[1];
+        console.log("🎯 3b. Base64 length:", base64?.length);
+        resolve(base64);
+      };
+      reader.readAsDataURL(blob);
+    });
 
-      if (!response.ok) {
-        console.log("Transcription failed:", await response.text());
-        Alert.alert("Error", "Transcription failed on server.");
-        setTranscript("");
-        return;
+    console.log("🎯 6. Sending to backend...");
+
+
+    // Send to your backend
+    const speechResponse = await fetch(
+      "http://192.168.100.45:8000/speech-to-text",  // ✅ Your backend URL
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          audio: audioBase64,
+        }),
       }
+    );
 
-      const data = await response.json();
-      setTranscript(data.text || "");
-    } catch (e) {
-      console.log("Error sending to backend:", e);
-      Alert.alert("Error", "Could not send audio for transcription.");
-      setTranscript("");
-    } finally {
-      setIsSending(false);
+    console.log("🎯 7. Backend response status:", speechResponse.status);
+    console.log("🎯 8. Backend response ok:", speechResponse.ok);
+
+    if (!speechResponse.ok) {
+      throw new Error(`Server error: ${speechResponse.status}`);
     }
-  };
+
+    const data = await speechResponse.json();
+    console.log("🎯 6. Backend response data:", JSON.stringify(data, null, 2));
+
+    if (data.success && data.text) {
+      console.log("🎯 7. Success! Text:", data.text);
+      setTranscript(data.text);
+      // Auto-process the command
+      handleTranscript(data.text);
+    } else {
+      console.log("🎯 8. Backend returned success:false, error:", data.error);
+      Alert.alert("Error", "Could not understand your speech. Please try again.");
+      setTranscript("");
+    }
+  } catch (e) {
+    console.log("Error sending to backend:", e);
+    Alert.alert("Error", "Could not send audio for transcription.");
+    setTranscript("");
+  } finally {
+    setIsSending(false);
+  }
+};
+
+const speakResponse = (text: string) => {
+  Speech.stop(); // Stop any current speech
+  
+  Speech.speak(text, {
+    language: 'en-US',
+    pitch: 1.0,
+    rate: 0.85,
+    onStart: () => console.log("🎤 Bondy started speaking"),
+    onDone: () => console.log("✅ Bondy finished speaking"),
+    onStopped: () => console.log("⏹️ Speech stopped"),
+    onError: (error) => console.log("❌ Speech error:", error),
+  });
+};
+
+const stopSpeaking = () => {
+  Speech.stop();
+  console.log("🔇 Stopped Bondy's speech");
+};
+
+const handleTranscript = (text: string) => {
+  console.log("Processing command:", text);
+  
+  let response = "";
+  
+  if (text.toLowerCase().includes("social") || text.toLowerCase().includes("events")) {
+    response = "I'll show you social events happening this week.";
+  } else if (text.toLowerCase().includes("physical") || text.toLowerCase().includes("exercise")) {
+    response = "Let me find some gentle physical activities for you.";
+  } else if (text.toLowerCase().includes("garden")) {
+    response = "I found several gardening groups in your area.";
+  } else if (text.toLowerCase().includes("book") || text.toLowerCase().includes("read")) {
+    response = "There are book clubs meeting this week. Would you like to join?";
+  } else if (text.toLowerCase().includes("hello") || text.toLowerCase().includes("hi")) {
+    response = "Hello! I'm Bondy. How can I help you today?";
+  } else if (text.toLowerCase().includes("thank")) {
+    response = "You're welcome! Is there anything else I can help you with?";
+  } else {
+    response = "I understand you said: \"" + text + "\". How can I help you with that?";
+  }
+  
+  // Show alert AND speak the response
+  Alert.alert("Bondy Response", response);
+  speakResponse(response);
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>

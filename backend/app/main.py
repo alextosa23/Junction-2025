@@ -16,6 +16,12 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from logging import getLogger
 
+from google.cloud import speech
+import base64
+import os
+
+FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
+
 logger = getLogger("uvicorn")
 
 # ---------- Firebase / Firestore setup using settings ----------
@@ -42,6 +48,13 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\Alex\Junction-2025\backend\google-credentials.json"
+
+try:
+    client = speech.SpeechClient()
+    logger.info("✅ Google Speech client initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize Google Speech client: {e}")
 # ------------------------------------------------------------------
 
 app = FastAPI(
@@ -97,7 +110,100 @@ async def create_preference(pref: PreferenceCreate):
     created = firestore.get_preference(pref_id)
     return Preference(**created)
 
+from google.cloud import speech
+import base64
+import os
+import tempfile
+import subprocess
 
+@app.post("/speech-to-text")
+async def speech_to_text(audio_data: dict):
+    """
+    Receive base64 audio (whatever iPhone recorded) and:
+    1. Save it as a temp file.
+    2. Convert with ffmpeg -> FLAC 16kHz mono.
+    3. Send FLAC bytes to Google STT.
+    """
+    try:
+        logger.info("🎯 Request reached /speech-to-text endpoint!")
+        client = speech.SpeechClient()
+
+        # 1) Decode base64 to raw bytes
+        raw_bytes = base64.b64decode(audio_data["audio"])
+        logger.info(f"🎯 Raw audio bytes size: {len(raw_bytes)}")
+
+        # 2) Save original audio to a temp file (no need to know exact extension)
+        with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as tmp_in:
+            tmp_in.write(raw_bytes)
+            input_path = tmp_in.name
+
+        # 3) Transcode to FLAC 16k mono using ffmpeg
+        tmp_out = tempfile.NamedTemporaryFile(suffix=".flac", delete=False)
+        output_path = tmp_out.name
+        tmp_out.close()
+
+        logger.info(f"🎯 Converting with ffmpeg: {input_path} -> {output_path}")
+
+        # ffmpeg -i input -ac 1 -ar 16000 output.flac
+        subprocess.run(
+        [FFMPEG_PATH, "-y", "-i", input_path, "-ac", "1", "-ar", "16000", output_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+
+        with open(output_path, "rb") as f:
+            flac_bytes = f.read()
+
+        # Clean up temp files
+        os.remove(input_path)
+        os.remove(output_path)
+
+        logger.info(f"🎯 FLAC bytes size: {len(flac_bytes)}")
+
+        audio = speech.RecognitionAudio(content=flac_bytes)
+        config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.FLAC,
+            sample_rate_hertz=16000,
+            language_code="en-US",
+            enable_automatic_punctuation=True,
+        )
+
+        response = client.recognize(config=config, audio=audio)
+
+        transcripts = [
+            result.alternatives[0].transcript
+            for result in response.results
+            if result.alternatives
+        ]
+        final_text = " ".join(transcripts).strip()
+
+        if not final_text:
+            logger.warning("❌ No text recognized")
+            return {
+                "text": "",
+                "success": False,
+                "error": "No speech recognized",
+            }
+
+        logger.info(f"✅ SUCCESS! Text: '{final_text}'")
+        return {"text": final_text, "success": True}
+
+    except subprocess.CalledProcessError as ff_err:
+        logger.error(f"❌ ffmpeg failed: {ff_err.stderr.decode(errors='ignore')}")
+        return {
+            "text": "",
+            "success": False,
+            "error": "Audio conversion failed",
+        }
+    except Exception as e:
+        logger.error(f"❌ ERROR in /speech-to-text: {e}")
+        return {
+            "text": "",
+            "success": False,
+            "error": str(e),
+        }
+    
 if __name__ == "__main__":
     import uvicorn
 
