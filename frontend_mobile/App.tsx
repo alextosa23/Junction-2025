@@ -1,15 +1,14 @@
-
-
-// App.tsx - UPDATED WITH PERSISTENT STORAGE
+// App.tsx - UPDATED WITH PERSISTENT STORAGE + EVENTS SCREEN
 import React, { useState, useEffect } from "react";
 import { SafeAreaView, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CategorySelection from "./src/screens/CategorySelection";
-
+import * as Notifications from "expo-notifications";
 import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
 import AddEvent from "./src/screens/AddEvent";
+import EventsScreen from "./src/screens/EventsScreen"; // ✅ NEW: import events list
 
 type AppState = {
   hasCompletedOnboarding: boolean;
@@ -17,9 +16,19 @@ type AppState = {
   profile: OnboardingData | null;
 };
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => {
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    } as Notifications.NotificationBehavior;
+  },
+});
+
 // Storage keys
 const STORAGE_KEYS = {
-  APP_STATE: 'appState',
+  APP_STATE: "appState",
 };
 
 export default function App() {
@@ -29,14 +38,17 @@ export default function App() {
     profile: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  // 🔹 NEW: which “extra” screen to show from CategorySelection
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showEvents, setShowEvents] = useState(false); // ✅ NEW
 
   useEffect(() => {
     const loadAppState = async () => {
       try {
         console.log("📱 Loading app state from storage...");
         const savedState = await AsyncStorage.getItem(STORAGE_KEYS.APP_STATE);
-        
+
         if (savedState) {
           const parsedState = JSON.parse(savedState);
           console.log("✅ Loaded saved state:", parsedState);
@@ -60,7 +72,7 @@ export default function App() {
         setIsLoading(false);
       }
     };
-    
+
     loadAppState();
   }, []);
 
@@ -68,19 +80,23 @@ export default function App() {
     try {
       const updatedState = { ...appState, ...newState };
       setAppState(updatedState);
-      
+
       // Save to persistent storage
-      await AsyncStorage.setItem(STORAGE_KEYS.APP_STATE, JSON.stringify(updatedState));
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.APP_STATE,
+        JSON.stringify(updatedState)
+      );
       console.log("💾 Saved app state:", updatedState);
     } catch (error) {
       console.error("❌ Error saving app state:", error);
     }
   };
 
-
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
         <Text style={{ fontSize: 18 }}>Loading...</Text>
       </SafeAreaView>
     );
@@ -89,7 +105,7 @@ export default function App() {
   // Debug log
   console.log("🔍 CURRENT APP STATE:", appState);
 
-
+  // 1️⃣ Welcome screen
   if (!appState.hasCompletedOnboarding) {
     return (
       <WelcomeScreen
@@ -100,7 +116,7 @@ export default function App() {
     );
   }
 
-  // User has seen welcome screen but not completed onboarding (no profile yet)
+  // 2️⃣ Onboarding (collect profile)
   if (!appState.profile) {
     return (
       <OnboardingScreen
@@ -112,19 +128,9 @@ export default function App() {
     );
   }
 
-  // User completed onboarding but hasn't selected categories
-  /*if (!appState.hasSelectedCategories) {
-    return (
-      <CategorySelection
-        userData={appState.profile}
-        onCategoriesSelected={(selectedCategories) => {
-          console.log("📂 [App] Selected categories:", selectedCategories);
-          saveAppState({ hasSelectedCategories: true });
-        }}
-      />
-    );
-  }*/
+  // 🔹 EXTRA SCREENS FROM CATEGORY SELECTION STEP
 
+  // 3️⃣ AddEvent screen (from "Add Event" button)
   if (showAddEvent) {
     return (
       <AddEvent
@@ -132,22 +138,21 @@ export default function App() {
           console.log("Saved event:", event);
           setShowAddEvent(false); // Go back to category selection
         }}
+        onBack={() => setShowAddEvent(false)} // back button inside AddEvent
       />
     );
   }
 
+  // 4️⃣ Events list screen (from "Your Events" button)
+  if (showEvents) {
+    return (
+      <EventsScreen
+        onBack={() => setShowEvents(false)} // you'll go back to CategorySelection
+      />
+    );
+  }
 
-  /*return (
-    <CategorySelection
-      userData={appState.profile}
-      onCategoriesSelected={(selectedCategories) => {
-        console.log("Selected categories:", selectedCategories);
-        saveAppState({ hasSelectedCategories: true });
-      }}
-      onAddEvent={() => setShowAddEvent(true)} 
-    />
-  );*/
-
+  // 5️⃣ Category selection (shown until categories chosen)
   if (!appState.hasSelectedCategories) {
     return (
       <CategorySelection
@@ -155,22 +160,22 @@ export default function App() {
         onCategoriesSelected={(categories) =>
           saveAppState({ hasSelectedCategories: true })
         }
-        onAddEvent={() => setShowAddEvent(true)}  
+        onAddEvent={() => setShowAddEvent(true)}   // 👈 opens AddEvent
+        onShowEvents={() => setShowEvents(true)}   // 👈 opens EventsScreen
       />
     );
   }
 
-  
-
-  // Main app - user has completed everything
-
+  // 6️⃣ Main app - user has completed everything
   return (
-    <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Main App Screen</Text>
+    <SafeAreaView
+      style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+    >
+      <Text style={{ fontSize: 24, fontWeight: "bold" }}>Main App Screen</Text>
       <Text style={{ fontSize: 16, marginTop: 20 }}>
         Welcome back, {appState.profile?.name}!
       </Text>
-      <Text style={{ fontSize: 14, marginTop: 10, textAlign: 'center' }}>
+      <Text style={{ fontSize: 14, marginTop: 10, textAlign: "center" }}>
         This is where the main voice companion interface will be.
       </Text>
     </SafeAreaView>

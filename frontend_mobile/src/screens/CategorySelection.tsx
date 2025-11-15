@@ -20,6 +20,7 @@ type CategorySelectionProps = {
   userData: any;
   onCategoriesSelected: (selectedCategories: ActivityCategory[]) => void;
   onAddEvent: () => void;
+  onShowEvents: () => void;
 };
 
 // These would come from your ML model based on onboarding data
@@ -66,6 +67,7 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
   userData,
   onCategoriesSelected,
   onAddEvent,
+  onShowEvents
 }) => {
   const [selectedCategories, setSelectedCategories] = useState<ActivityCategory[]>([]);
 
@@ -193,6 +195,9 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
 
           <TouchableOpacity style={styles.addButton} onPress={onAddEvent}>
             <Text style={styles.addButtonText}>Add Event</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton} onPress={onShowEvents}>
+            <Text style={styles.addButtonText}>Your Events</Text>
           </TouchableOpacity>
         </ScrollView>
 
