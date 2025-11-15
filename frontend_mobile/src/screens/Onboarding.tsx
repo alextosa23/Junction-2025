@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
 } from "react-native";
 import * as Location from "expo-location";
 
@@ -22,7 +23,7 @@ export type OnboardingData = {
 };
 
 type OnboardingProps = {
-  onFinish: (data: OnboardingData) => void;
+  onFinish?: (data: OnboardingData) => void;
 };
 
 const activityOptions = [
@@ -63,6 +64,21 @@ type Coords = {
   latitude: number;
   longitude: number;
 };
+
+// 🔗 This matches your PreferenceCreate Pydantic model
+type PreferenceCreate = {
+  device_id: string;
+  name: string;
+  location: { latitude: number; longitude: number };
+  activities: string[];
+  topics: string[];
+  chat_times: string[];
+  activity_type: string;
+  looking_for: string[];
+};
+
+
+const API_URL = "http://192.168.100.39:8000/preferences";
 
 const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
   const [step, setStep] = useState<number>(0);
@@ -115,7 +131,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
       const lon = loc.coords.longitude;
 
       setCoords({ latitude: lat, longitude: lon });
-      setLocation(`${lat}, ${lon}`); // save as string for your OnboardingData
+      setLocation(`${lat}, ${lon}`); // save as string for OnboardingData
       setLocationError(null);
     } catch (err) {
       console.error("Location error", err);
@@ -147,21 +163,72 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
     }
   };
 
-  const handleNext = () => {
+  // 🔥 handleNext now sends data directly to the backend on the last step
+  const handleNext = async () => {
     if (step < totalSteps - 1) {
       setStep((prev) => prev + 1);
-    } else {
-      const data: OnboardingData = {
-        name,
-        age,
-        location,
-        activities,
-        topics,
-        chatTime,
-        activityPlace,
-        goals,
-      };
-      onFinish(data);
+      return;
+    }
+
+    // Last step → build data and send to backend
+    const data: OnboardingData = {
+      name,
+      age,
+      location,
+      activities,
+      topics,
+      chatTime,
+      activityPlace,
+      goals,
+    };
+
+    if (!coords) {
+      Alert.alert("Error", "Location not detected yet.");
+      return;
+    }
+
+    // Map to your PreferenceCreate model
+    const payload: PreferenceCreate = {
+      device_id: "demo-device-id-123", // TODO: replace with real device id later
+      name: data.name,
+      location: {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      },
+      activities: data.activities,
+      topics: data.topics,
+      chat_times: data.chatTime ? [data.chatTime] : [],
+      activity_type: data.activityPlace ?? "",
+      looking_for: data.goals,
+    };
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Backend error:", text);
+        Alert.alert("Error", "Could not save preferences.");
+        return;
+      }
+
+      const json = await res.json();
+      console.log("Saved preference:", json);
+      Alert.alert("Success", "Preferences saved!");
+
+      // still call onFinish if a parent passed it in
+      if (onFinish) {
+        onFinish(data);
+      }
+    } catch (err) {
+      console.error("Network error:", err);
+      Alert.alert("Error", "Could not contact server.");
     }
   };
 
