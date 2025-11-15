@@ -1,13 +1,15 @@
-// App.tsx - UPDATED WITH PERSISTENT STORAGE
+
 import React, { useState, useEffect } from "react";
 import { SafeAreaView, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CategorySelection from "./src/screens/CategorySelection";
-
-import OnboardingScreen from "./src/screens/OnboardingScreen";
+import * as Notifications from "expo-notifications";
+import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
 import AddEvent from "./src/screens/AddEvent";
+import EventsScreen from "./src/screens/EventsScreen"; // ✅ NEW: import events list
+import { registerForNotificationsAsync } from "./src/services/notifications";
 import VoiceButton from "./src/screens/VoiceButton";
 import VoiceScreen from "./src/screens/VoiceScreen";
 
@@ -16,6 +18,18 @@ type AppState = {
   hasSelectedCategories: boolean;
   profile: OnboardingData | null;
 };
+
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => {
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    } as Notifications.NotificationBehavior;
+  },
+});
+
 
 const STORAGE_KEYS = {
   APP_STATE: "appState",
@@ -28,7 +42,16 @@ export default function App() {
     profile: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  // 🔹 NEW: which “extra” screen to show from CategorySelection
   const [showAddEvent, setShowAddEvent] = useState(false);
+
+  const [showEvents, setShowEvents] = useState(false); // ✅ NEW
+
+  useEffect(() => {
+    registerForNotificationsAsync();
+  }, []);
+
   const [showVoice, setShowVoice] = useState(false); // 👈 controls VoiceScreen
 
   useEffect(() => {
@@ -94,7 +117,6 @@ export default function App() {
   if (showVoice) {
     return <VoiceScreen onBack={() => setShowVoice(false)} />;
   }
-
   if (!appState.hasCompletedOnboarding) {
     return (
       <WelcomeScreen
@@ -104,6 +126,7 @@ export default function App() {
       />
     );
   }
+
 
   if (!appState.profile) {
     return (
@@ -116,6 +139,8 @@ export default function App() {
     );
   }
 
+
+
   if (showAddEvent) {
     return (
       <AddEvent
@@ -123,9 +148,22 @@ export default function App() {
           console.log("Saved event:", event);
           setShowAddEvent(false);
         }}
+        onBack={() => setShowAddEvent(false)} // back button inside AddEvent
       />
     );
   }
+
+
+  // 4️⃣ Events list screen (from "Your Events" button)
+  if (showEvents) {
+    return (
+      <EventsScreen
+        onBack={() => setShowEvents(false)} // you'll go back to CategorySelection
+      />
+    );
+  }
+
+  // 5️⃣ Category selection (shown until categories chosen)
 
   if (!appState.hasSelectedCategories) {
     return (
@@ -134,11 +172,16 @@ export default function App() {
         onCategoriesSelected={(categories) =>
           saveAppState({ hasSelectedCategories: true })
         }
+
+        onShowEvents={() => setShowEvents(true)}   // 👈 opens EventsScreen
+
         onAddEvent={() => setShowAddEvent(true)}
         onOpenVoice={() => setShowVoice(true)} // 👈 mic in categories
+
       />
     );
   }
+
 
   // Main app - user has completed everything
   return (
@@ -172,6 +215,7 @@ export default function App() {
       >
         <VoiceButton onPress={() => setShowVoice(true)} />
       </View>
+
     </SafeAreaView>
   );
 }

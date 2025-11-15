@@ -21,6 +21,7 @@ type CategorySelectionProps = {
   userData: any;
   onCategoriesSelected: (selectedCategories: ActivityCategory[]) => void;
   onAddEvent: () => void;
+  onShowEvents: () => void;
   onOpenVoice?: () => void; // 👈 app passes this
 };
 
@@ -67,6 +68,7 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
   userData,
   onCategoriesSelected,
   onAddEvent,
+  onShowEvents,
   onOpenVoice,
 }) => {
   const [selectedCategories, setSelectedCategories] = useState<
@@ -153,6 +155,9 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
 
           <TouchableOpacity style={styles.addButton} onPress={onAddEvent}>
             <Text style={styles.addButtonText}>Add Event</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton} onPress={onShowEvents}>
+            <Text style={styles.addButtonText}>Your Events</Text>
           </TouchableOpacity>
         </ScrollView>
 

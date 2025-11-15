@@ -1,3 +1,4 @@
+// src/screens/AddEvent.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -7,27 +8,114 @@ import {
   StyleSheet,
   SafeAreaView,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  scheduleEventNotification,
+  RecurrenceType,
+} from "../services/notifications";
 
 type AddEventProps = {
-  onSave: (event: { title: string; date: Date }) => void;
+  onSave?: (event: { title: string; date: Date; recurrence: RecurrenceType }) => void;
+  onBack?: () => void;
 };
 
-const AddEvent: React.FC<AddEventProps> = ({ onSave }) => {
+const EVENTS_KEY = "events";
+
+const AddEvent: React.FC<AddEventProps> = ({ onSave, onBack }) => {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(new Date());
+  const [recurrence, setRecurrence] = useState<RecurrenceType>("once");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (title.trim().length === 0) return;
-    onSave({ title, date });
+
+    // 1) Schedule notification for this event
+    let notificationId: string | null = null;
+    try {
+      notificationId = await scheduleEventNotification({
+        title,
+        date,
+        recurrence,
+      });
+    } catch (e) {
+      console.warn("Failed to schedule notification", e);
+    }
+
+    // 2) Build event object to store
+    const newEvent = {
+      id: Date.now().toString(),
+      title,
+      date: date.toISOString(),
+      recurrence,
+      notificationId, // can be null if scheduling failed
+    };
+
+    try {
+      const stored = await AsyncStorage.getItem(EVENTS_KEY);
+      const events = stored ? JSON.parse(stored) : [];
+      const updatedEvents = [...events, newEvent];
+
+      await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(updatedEvents));
+
+      if (onSave) {
+        onSave({ title, date, recurrence });
+      }
+
+      setTitle("");
+    } catch (err) {
+      console.warn("Error saving event", err);
+    }
+  };
+
+  // --- Date & Time pickers ---
+
+  const handleDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
+    setShowDatePicker(false);
+    if (event.type === "dismissed" || !selectedDate) return;
+
+    const updated = new Date(date);
+    updated.setFullYear(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate()
+    );
+    setDate(updated);
+  };
+
+  const handleTimeChange = (
+    event: DateTimePickerEvent,
+    selectedTime?: Date
+  ) => {
+    setShowTimePicker(false);
+    if (event.type === "dismissed" || !selectedTime) return;
+
+    const updated = new Date(date);
+    updated.setHours(selectedTime.getHours());
+    updated.setMinutes(selectedTime.getMinutes());
+    setDate(updated);
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>Add New Event</Text>
+        {/* Header with back button + centered title */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.title}>Add New Event</Text>
+
+          <View style={styles.headerSpacer} />
+        </View>
 
         <Text style={styles.label}>Event Title</Text>
         <TextInput
@@ -42,9 +130,7 @@ const AddEvent: React.FC<AddEventProps> = ({ onSave }) => {
           style={styles.selector}
           onPress={() => setShowDatePicker(true)}
         >
-          <Text style={styles.selectorText}>
-            {date.toDateString()}
-          </Text>
+          <Text style={styles.selectorText}>{date.toDateString()}</Text>
         </TouchableOpacity>
 
         <Text style={styles.label}>Time</Text>
@@ -60,66 +146,54 @@ const AddEvent: React.FC<AddEventProps> = ({ onSave }) => {
           </Text>
         </TouchableOpacity>
 
+        <Text style={styles.label}>Repeat</Text>
+        <View style={styles.recurrenceRow}>
+          <TouchableOpacity
+            style={[
+              styles.recurrenceOption,
+              recurrence === "once" && styles.recurrenceOptionActive,
+            ]}
+            onPress={() => setRecurrence("once")}
+          >
+            <Text
+              style={[
+                styles.recurrenceText,
+                recurrence === "once" && styles.recurrenceTextActive,
+              ]}
+            >
+              One-time
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.recurrenceOption,
+              recurrence === "daily" && styles.recurrenceOptionActive,
+            ]}
+            onPress={() => setRecurrence("daily")}
+          >
+            <Text
+              style={[
+                styles.recurrenceText,
+                recurrence === "daily" && styles.recurrenceTextActive,
+              ]}
+            >
+              Every day
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveText}>Save Event</Text>
         </TouchableOpacity>
 
-        {/* {showDatePicker && (
-          <DateTimePicker
-            mode="date"
-            value={date}
-            onChange={(event: any, selectedDate?: Date) => {
-                setShowDatePicker(false);
-                if (!selectedDate) return;
-
-                const updated = new Date(date);
-                updated.setFullYear(
-                    selectedDate.getFullYear(),
-                    selectedDate.getMonth(),
-                    selectedDate.getDate()
-                );
-                setDate(updated);
-        }}
-          />
-        )}
-
-        {showTimePicker && (
-          <DateTimePicker
-            mode="time"
-            value={date}
-            onChange={(event: any, selectedTime?: Date) => {
-                setShowTimePicker(false);
-                if (!selectedTime) return;
-
-                const updated = new Date(date);
-                updated.setHours(selectedTime.getHours());
-                updated.setMinutes(selectedTime.getMinutes());
-                setDate(updated);
-            }}
-          />
-        )} */}
-
+        {/* Show pickers only when field is pressed */}
         {showDatePicker && (
           <DateTimePicker
             mode="date"
             display="spinner"
             value={date}
-            onChange={(event, selectedDate) => {
-              if (event.type === "dismissed") {
-                setShowDatePicker(false);
-                return;
-              }
-              setShowDatePicker(false);
-              if (selectedDate) {
-                const updated = new Date(date);
-                updated.setFullYear(
-                  selectedDate.getFullYear(),
-                  selectedDate.getMonth(),
-                  selectedDate.getDate()
-                );
-                setDate(updated);
-              }
-            }}
+            onChange={handleDateChange}
           />
         )}
 
@@ -128,27 +202,9 @@ const AddEvent: React.FC<AddEventProps> = ({ onSave }) => {
             mode="time"
             display="spinner"
             value={date}
-            onChange={(event, selectedTime) => {
-              if (event.type === "dismissed") {
-                setShowTimePicker(false);
-                return;
-              }
-              setShowTimePicker(false);
-              if (selectedTime) {
-                const updated = new Date(date);
-                updated.setHours(selectedTime.getHours());
-                updated.setMinutes(selectedTime.getMinutes());
-                setDate(updated);
-              }
-            }}
+            onChange={handleTimeChange}
           />
         )}
-
-
-
-
-
-
       </View>
     </SafeAreaView>
   );
@@ -156,13 +212,35 @@ const AddEvent: React.FC<AddEventProps> = ({ onSave }) => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#F9FAFB" },
-  container: { paddingHorizontal: 24, paddingTop: 40 },
+  container: { flex: 1, paddingHorizontal: 24, paddingTop: 16 },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    justifyContent: "space-between",
+  },
+  backButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    width: 80,
+    alignItems: "flex-start",
+  },
+  backText: {
+    fontSize: 16,
+    color: "#2563EB",
+    fontWeight: "600",
+    textAlign: "left",
+  },
+  headerSpacer: {
+    width: 80,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: "700",
-    marginBottom: 30,
     textAlign: "center",
   },
+
   label: {
     marginTop: 16,
     fontSize: 16,
@@ -187,6 +265,33 @@ const styles = StyleSheet.create({
   selectorText: {
     fontSize: 16,
   },
+
+  recurrenceRow: {
+    flexDirection: "row",
+    marginTop: 4,
+    gap: 12,
+  },
+  recurrenceOption: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+  },
+  recurrenceOptionActive: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
+  },
+  recurrenceText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#374151",
+  },
+  recurrenceTextActive: {
+    color: "white",
+  },
+
   saveButton: {
     marginTop: 32,
     backgroundColor: "#2563EB",
