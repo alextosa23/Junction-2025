@@ -1,5 +1,3 @@
-
-
 // App.tsx - UPDATED WITH PERSISTENT STORAGE
 import React, { useState, useEffect } from "react";
 import { SafeAreaView, Text, View } from "react-native";
@@ -8,8 +6,10 @@ import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CategorySelection from "./src/screens/CategorySelection";
 
-import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
+import OnboardingScreen from "./src/screens/OnboardingScreen";
 import AddEvent from "./src/screens/AddEvent";
+import VoiceButton from "./src/screens/VoiceButton";
+import VoiceScreen from "./src/screens/VoiceScreen";
 
 type AppState = {
   hasCompletedOnboarding: boolean;
@@ -17,9 +17,8 @@ type AppState = {
   profile: OnboardingData | null;
 };
 
-// Storage keys
 const STORAGE_KEYS = {
-  APP_STATE: 'appState',
+  APP_STATE: "appState",
 };
 
 export default function App() {
@@ -30,13 +29,14 @@ export default function App() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showVoice, setShowVoice] = useState(false); // 👈 controls VoiceScreen
 
   useEffect(() => {
     const loadAppState = async () => {
       try {
         console.log("📱 Loading app state from storage...");
         const savedState = await AsyncStorage.getItem(STORAGE_KEYS.APP_STATE);
-        
+
         if (savedState) {
           const parsedState = JSON.parse(savedState);
           console.log("✅ Loaded saved state:", parsedState);
@@ -60,7 +60,7 @@ export default function App() {
         setIsLoading(false);
       }
     };
-    
+
     loadAppState();
   }, []);
 
@@ -68,27 +68,32 @@ export default function App() {
     try {
       const updatedState = { ...appState, ...newState };
       setAppState(updatedState);
-      
-      // Save to persistent storage
-      await AsyncStorage.setItem(STORAGE_KEYS.APP_STATE, JSON.stringify(updatedState));
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.APP_STATE,
+        JSON.stringify(updatedState)
+      );
       console.log("💾 Saved app state:", updatedState);
     } catch (error) {
       console.error("❌ Error saving app state:", error);
     }
   };
 
-
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
         <Text style={{ fontSize: 18 }}>Loading...</Text>
       </SafeAreaView>
     );
   }
 
-  // Debug log
   console.log("🔍 CURRENT APP STATE:", appState);
 
+  // 🎤 Voice screen overrides everything else when open
+  if (showVoice) {
+    return <VoiceScreen onBack={() => setShowVoice(false)} />;
+  }
 
   if (!appState.hasCompletedOnboarding) {
     return (
@@ -100,7 +105,6 @@ export default function App() {
     );
   }
 
-  // User has seen welcome screen but not completed onboarding (no profile yet)
   if (!appState.profile) {
     return (
       <OnboardingScreen
@@ -112,41 +116,16 @@ export default function App() {
     );
   }
 
-  // User completed onboarding but hasn't selected categories
-  /*if (!appState.hasSelectedCategories) {
-    return (
-      <CategorySelection
-        userData={appState.profile}
-        onCategoriesSelected={(selectedCategories) => {
-          console.log("📂 [App] Selected categories:", selectedCategories);
-          saveAppState({ hasSelectedCategories: true });
-        }}
-      />
-    );
-  }*/
-
   if (showAddEvent) {
     return (
       <AddEvent
         onSave={(event) => {
           console.log("Saved event:", event);
-          setShowAddEvent(false); // Go back to category selection
+          setShowAddEvent(false);
         }}
       />
     );
   }
-
-
-  /*return (
-    <CategorySelection
-      userData={appState.profile}
-      onCategoriesSelected={(selectedCategories) => {
-        console.log("Selected categories:", selectedCategories);
-        saveAppState({ hasSelectedCategories: true });
-      }}
-      onAddEvent={() => setShowAddEvent(true)} 
-    />
-  );*/
 
   if (!appState.hasSelectedCategories) {
     return (
@@ -155,24 +134,44 @@ export default function App() {
         onCategoriesSelected={(categories) =>
           saveAppState({ hasSelectedCategories: true })
         }
-        onAddEvent={() => setShowAddEvent(true)}  
+        onAddEvent={() => setShowAddEvent(true)}
+        onOpenVoice={() => setShowVoice(true)} // 👈 mic in categories
       />
     );
   }
 
-  
-
   // Main app - user has completed everything
-
   return (
-    <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Main App Screen</Text>
-      <Text style={{ fontSize: 16, marginTop: 20 }}>
-        Welcome back, {appState.profile?.name}!
-      </Text>
-      <Text style={{ fontSize: 14, marginTop: 10, textAlign: 'center' }}>
-        This is where the main voice companion interface will be.
-      </Text>
+    <SafeAreaView style={{ flex: 1 }}>
+      {/* Main content in the center */}
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontSize: 24, fontWeight: "bold" }}>
+          Main App Screen
+        </Text>
+        <Text style={{ fontSize: 16, marginTop: 20 }}>
+          Welcome back, {appState.profile?.name}!
+        </Text>
+        <Text style={{ fontSize: 14, marginTop: 10, textAlign: "center" }}>
+          This is where the main voice companion interface will be.
+        </Text>
+      </View>
+
+      {/* 🎤 Mic in bottom-right for main app */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 32,
+          right: 24,
+        }}
+      >
+        <VoiceButton onPress={() => setShowVoice(true)} />
+      </View>
     </SafeAreaView>
   );
 }
