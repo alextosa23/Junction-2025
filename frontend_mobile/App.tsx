@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { SafeAreaView, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -6,19 +5,20 @@ import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CategorySelection from "./src/screens/CategorySelection";
 import * as Notifications from "expo-notifications";
-import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
+import OnboardingScreen from "./src/screens/OnboardingScreen";
 import AddEvent from "./src/screens/AddEvent";
-import EventsScreen from "./src/screens/EventsScreen"; // ✅ NEW: import events list
+import EventsScreen from "./src/screens/EventsScreen";
 import { registerForNotificationsAsync } from "./src/services/notifications";
 import VoiceButton from "./src/screens/VoiceButton";
 import VoiceScreen from "./src/screens/VoiceScreen";
+import CameraButton from "./src/screens/CameraButton";
+import PhotoHelpScreen from "./src/screens/PhotoHelpScreen";
 
 type AppState = {
   hasCompletedOnboarding: boolean;
   hasSelectedCategories: boolean;
   profile: OnboardingData | null;
 };
-
 
 Notifications.setNotificationHandler({
   handleNotification: async () => {
@@ -29,7 +29,6 @@ Notifications.setNotificationHandler({
     } as Notifications.NotificationBehavior;
   },
 });
-
 
 const STORAGE_KEYS = {
   APP_STATE: "appState",
@@ -43,16 +42,15 @@ export default function App() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🔹 NEW: which “extra” screen to show from CategorySelection
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
+  const [showPhotoHelp, setShowPhotoHelp] = useState(false);
 
-  const [showEvents, setShowEvents] = useState(false); // ✅ NEW
+  const [showVoice, setShowVoice] = useState(false); // controls VoiceScreen
 
   useEffect(() => {
     registerForNotificationsAsync();
   }, []);
-
-  const [showVoice, setShowVoice] = useState(false); // 👈 controls VoiceScreen
 
   useEffect(() => {
     const loadAppState = async () => {
@@ -113,10 +111,16 @@ export default function App() {
 
   console.log("🔍 CURRENT APP STATE:", appState);
 
-  // 🎤 Voice screen overrides everything else when open
+  // Voice screen overrides everything
   if (showVoice) {
     return <VoiceScreen onBack={() => setShowVoice(false)} />;
   }
+
+  // Photo help screen
+  if (showPhotoHelp) {
+    return <PhotoHelpScreen onBack={() => setShowPhotoHelp(false)} />;
+  }
+
   if (!appState.hasCompletedOnboarding) {
     return (
       <WelcomeScreen
@@ -126,7 +130,6 @@ export default function App() {
       />
     );
   }
-
 
   if (!appState.profile) {
     return (
@@ -139,8 +142,6 @@ export default function App() {
     );
   }
 
-
-
   if (showAddEvent) {
     return (
       <AddEvent
@@ -148,22 +149,18 @@ export default function App() {
           console.log("Saved event:", event);
           setShowAddEvent(false);
         }}
-        onBack={() => setShowAddEvent(false)} // back button inside AddEvent
+        onBack={() => setShowAddEvent(false)}
       />
     );
   }
 
-
-  // 4️⃣ Events list screen (from "Your Events" button)
   if (showEvents) {
     return (
       <EventsScreen
-        onBack={() => setShowEvents(false)} // you'll go back to CategorySelection
+        onBack={() => setShowEvents(false)}
       />
     );
   }
-
-  // 5️⃣ Category selection (shown until categories chosen)
 
   if (!appState.hasSelectedCategories) {
     return (
@@ -172,21 +169,17 @@ export default function App() {
         onCategoriesSelected={(categories) =>
           saveAppState({ hasSelectedCategories: true })
         }
-
-        onShowEvents={() => setShowEvents(true)}   // 👈 opens EventsScreen
-
+        onShowEvents={() => setShowEvents(true)}
         onAddEvent={() => setShowAddEvent(true)}
-        onOpenVoice={() => setShowVoice(true)} // 👈 mic in categories
-
+        onOpenVoice={() => setShowVoice(true)}
+        onOpenCamera={() => setShowPhotoHelp(true)}
       />
     );
   }
 
-
   // Main app - user has completed everything
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {/* Main content in the center */}
       <View
         style={{
           flex: 1,
@@ -205,17 +198,19 @@ export default function App() {
         </Text>
       </View>
 
-      {/* 🎤 Mic in bottom-right for main app */}
+      {/* Mic + Camera in bottom-right */}
       <View
         style={{
           position: "absolute",
           bottom: 32,
           right: 24,
+          flexDirection: "row",
+          gap: 16,
         }}
       >
         <VoiceButton onPress={() => setShowVoice(true)} />
+        <CameraButton onPress={() => setShowPhotoHelp(true)} />
       </View>
-
     </SafeAreaView>
   );
 }
