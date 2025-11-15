@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
+import VoiceButton from "./VoiceButton";
 
 export type ActivityCategory = {
   id: string;
@@ -20,9 +21,9 @@ type CategorySelectionProps = {
   userData: any;
   onCategoriesSelected: (selectedCategories: ActivityCategory[]) => void;
   onAddEvent: () => void;
+  onOpenVoice?: () => void; // 👈 app passes this
 };
 
-// These would come from your ML model based on onboarding data
 const RECOMMENDED_CATEGORIES: ActivityCategory[] = [
   {
     id: "physical",
@@ -66,21 +67,24 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
   userData,
   onCategoriesSelected,
   onAddEvent,
+  onOpenVoice,
 }) => {
-  const [selectedCategories, setSelectedCategories] = useState<ActivityCategory[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<
+    ActivityCategory[]
+  >([]);
 
   const toggleCategory = (category: ActivityCategory) => {
-    setSelectedCategories(prev => {
-      const isSelected = prev.find(c => c.id === category.id);
+    setSelectedCategories((prev) => {
+      const isSelected = prev.find((c) => c.id === category.id);
       if (isSelected) {
-        return prev.filter(c => c.id !== category.id);
+        return prev.filter((c) => c.id !== category.id);
       } else {
         return [...prev, category];
       }
     });
   };
 
-  const handleContinue = () => {  
+  const handleContinue = () => {
     if (selectedCategories.length === 0) {
       alert("Please select at least one category to continue");
       return;
@@ -93,62 +97,18 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
       <View style={styles.container}>
         <Text style={styles.title}>Choose Your Interests</Text>
         <Text style={styles.subtitle}>
-          Based on your profile, we recommend these categories. Select the ones that interest you most.
+          Based on your profile, we recommend these categories. Select the ones
+          that interest you most.
         </Text>
-
-        {/* <ScrollView style={styles.categoriesContainer}>
-          {RECOMMENDED_CATEGORIES.map((category) => {
-            const isSelected = selectedCategories.find(c => c.id === category.id);
-            return (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryCard,
-                  isSelected && styles.categoryCardSelected,
-                ]}
-                onPress={() => toggleCategory(category)}
-              >
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
-                <View style={styles.categoryTextContainer}>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                  <Text style={styles.categoryDescription}>
-                    {category.description}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.selectionIndicator,
-                  isSelected && styles.selectionIndicatorSelected,
-                ]}>
-                  {isSelected && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            selectedCategories.length === 0 && styles.continueButtonDisabled,
-          ]}
-          onPress={handleContinue}
-          disabled={selectedCategories.length === 0}
-        >
-          <Text style={styles.continueButtonText}>
-            Continue to App ({selectedCategories.length} selected)
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.addButton} onPress={onAddEvent}>
-          <Text style={styles.addButtonText}>Add Event</Text>
-        </TouchableOpacity> */}
 
         <ScrollView
           style={styles.categoriesContainer}
-          contentContainerStyle={{ paddingBottom: 300 }} 
+          contentContainerStyle={{ paddingBottom: 300 }}
         >
           {RECOMMENDED_CATEGORIES.map((category) => {
-            const isSelected = selectedCategories.find(c => c.id === category.id);
+            const isSelected = selectedCategories.find(
+              (c) => c.id === category.id
+            );
             return (
               <TouchableOpacity
                 key={category.id}
@@ -177,11 +137,11 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
             );
           })}
 
-          
           <TouchableOpacity
             style={[
               styles.continueButton,
-              selectedCategories.length === 0 && styles.continueButtonDisabled,
+              selectedCategories.length === 0 &&
+                styles.continueButtonDisabled,
             ]}
             onPress={handleContinue}
             disabled={selectedCategories.length === 0}
@@ -196,8 +156,12 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
           </TouchableOpacity>
         </ScrollView>
 
-
-
+        {/* 🎤 Mic in bottom-right */}
+        {onOpenVoice && (
+          <View style={styles.voiceButtonContainer}>
+            <VoiceButton onPress={onOpenVoice} />
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -305,7 +269,12 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "700",  
+    fontWeight: "700",
+  },
+  voiceButtonContainer: {
+    position: "absolute",
+    bottom: 32,
+    right: 24,
   },
 });
 
