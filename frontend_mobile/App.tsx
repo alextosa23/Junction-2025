@@ -7,11 +7,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CategorySelection from "./src/screens/CategorySelection";
-<<<<<<< HEAD
+
 import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
-=======
 import AddEvent from "./src/screens/AddEvent";
->>>>>>> 93171df (add event)
 
 type AppState = {
   hasCompletedOnboarding: boolean;
@@ -138,9 +136,7 @@ export default function App() {
     );
   }
 
-<<<<<<< HEAD
-  // Main app
-=======
+
   /*return (
     <CategorySelection
       userData={appState.profile}
@@ -168,7 +164,6 @@ export default function App() {
 
   // Main app - user has completed everything
 
->>>>>>> 93171df (add event)
   return (
     <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Main App Screen</Text>
