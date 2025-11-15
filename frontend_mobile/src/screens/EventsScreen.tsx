@@ -32,7 +32,24 @@ const EventsScreen: React.FC<EventsScreenProps> = ({ onBack }) => {
     try {
       const stored = await AsyncStorage.getItem(EVENTS_KEY);
       const parsed: StoredEvent[] = stored ? JSON.parse(stored) : [];
-      setEvents(parsed);
+
+      const now = new Date();
+
+      // Remove past one-time events
+      const filtered = parsed.filter((ev) => {
+        const evDate = new Date(ev.date);
+        if (ev.recurrence === "once" && evDate < now) {
+          return false; // drop from list
+        }
+        return true;
+      });
+
+      // Persist cleaned list if anything was removed
+      if (filtered.length !== parsed.length) {
+        await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(filtered));
+      }
+
+      setEvents(filtered);
     } catch (e) {
       console.warn("Error loading events", e);
     } finally {
@@ -57,7 +74,6 @@ const EventsScreen: React.FC<EventsScreenProps> = ({ onBack }) => {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-
         {/* Header */}
         <View style={styles.headerRow}>
           {onBack ? (
