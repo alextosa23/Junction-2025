@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
 } from "react-native";
 import * as Location from "expo-location";
 
@@ -65,21 +64,6 @@ type Coords = {
   longitude: number;
 };
 
-// 🔗 This matches your PreferenceCreate Pydantic model
-type PreferenceCreate = {
-  device_id: string;
-  name: string;
-  location: { latitude: number; longitude: number };
-  activities: string[];
-  topics: string[];
-  chat_times: string[];
-  activity_type: string;
-  looking_for: string[];
-};
-
-
-const API_URL = "http://192.168.100.39:8000/preferences";
-
 const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
   const [step, setStep] = useState<number>(0);
 
@@ -93,7 +77,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
   const [activityPlace, setActivityPlace] = useState<string | null>(null);
   const [goals, setGoals] = useState<string[]>([]);
 
-  // 👉 location-related state
+  // location-related state
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hasFetchedLocation, setHasFetchedLocation] = useState(false);
@@ -112,10 +96,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
     }
   };
 
-  // 👉 Expo location logic
+  // Expo location logic
   const getUserLocation = async () => {
     try {
-      // Permission (Expo / expo-location)
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
@@ -146,7 +129,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
       case 1:
         return age.trim().length > 0;
       case 2:
-        // Now we rely on coords instead of manual text input
         return coords !== null;
       case 3:
         return activities.length > 0;
@@ -163,36 +145,32 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
     }
   };
 
-  // 🔥 handleNext now sends data directly to the backend on the last step
-  // 🔥 FIXED handleNext function
-// 🔥 SIMPLEST FIX - Remove all alerts and call onFinish directly
-const handleNext = async () => {
-  if (step < totalSteps - 1) {
-    setStep((prev) => prev + 1);
-    return;
-  }
+  const handleNext = () => {
+    if (step < totalSteps - 1) {
+      setStep((prev) => prev + 1);
+      return;
+    }
 
-  console.log("🎯 FINAL STEP - Calling onFinish directly");
+    console.log("🎯 FINAL STEP - Calling onFinish");
 
-  const data: OnboardingData = {
-    name,
-    age,
-    location,
-    activities,
-    topics,
-    chatTime,
-    activityPlace,
-    goals,
+    const data: OnboardingData = {
+      name,
+      age,
+      location,
+      activities,
+      topics,
+      chatTime,
+      activityPlace,
+      goals,
+    };
+
+    if (onFinish) {
+      console.log("🚀 Calling onFinish with onboarding data");
+      onFinish(data);
+    } else {
+      console.log("❌ onFinish is undefined");
+    }
   };
-
-  // Just call onFinish immediately
-  if (onFinish) {
-    console.log("🚀 Direct call to onFinish");
-    onFinish(data);
-  } else {
-    console.log("❌ onFinish is undefined");
-  }
-};
 
   const handleBack = () => {
     if (step > 0) {

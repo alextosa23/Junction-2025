@@ -1,9 +1,10 @@
-// App.tsx - CORRECTED VERSION
+// App.tsx
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, Text, View } from "react-native";
-import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
+import { SafeAreaView, Text } from "react-native";
+import { OnboardingData } from "./src/screens/Onboarding";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CategorySelection from "./src/screens/CategorySelection";
+import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
 
 type AppState = {
   hasCompletedOnboarding: boolean;
@@ -18,7 +19,6 @@ export default function App() {
     profile: null,
   });
 
-  // Load app state from storage on app start
   useEffect(() => {
     const loadAppState = async () => {
       // Mock loading - replace with actual storage
@@ -37,7 +37,7 @@ export default function App() {
     // In real app, save to AsyncStorage here
   };
 
-  // First time user flow
+  // First-time user flow: show welcome screen
   if (!appState.hasCompletedOnboarding) {
     return (
       <WelcomeScreen
@@ -48,13 +48,13 @@ export default function App() {
     );
   }
 
-  // User has seen welcome screen but not completed onboarding
+  // User has seen welcome screen but not completed onboarding (no profile yet)
   if (!appState.profile) {
     return (
-      <Onboarding
-        onFinish={(data) => {
+      <OnboardingScreen
+        onSaved={(data) => {
+          console.log("📱 [App] Onboarding saved, profile:", data);
           saveAppState({ profile: data });
-          console.log("Onboarding finished:", data);
         }}
       />
     );
@@ -66,15 +66,14 @@ export default function App() {
       <CategorySelection
         userData={appState.profile}
         onCategoriesSelected={(selectedCategories) => {
-          console.log("Selected categories:", selectedCategories);
+          console.log("📂 [App] Selected categories:", selectedCategories);
           saveAppState({ hasSelectedCategories: true });
-          // Here you would also save the selected categories
         }}
       />
     );
   }
 
-  // Main app - user has completed everything
+  // Main app
   return (
     <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Main App Screen</Text>

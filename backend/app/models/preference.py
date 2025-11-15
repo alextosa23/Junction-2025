@@ -6,6 +6,7 @@ from datetime import datetime
 class PreferenceCreate(BaseModel):
     device_id: str
     name: str
+    age: int
     location: Dict[str, float]
     activities: List[str]
     topics: List[str]
@@ -17,6 +18,7 @@ class PreferenceCreate(BaseModel):
 class PreferenceUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[Dict[str, float]] = None
+    age: Optional[int] = None
     activities: Optional[List[str]] = None
     topics: Optional[List[str]] = None
     chat_times: Optional[List[str]] = None
@@ -25,9 +27,9 @@ class PreferenceUpdate(BaseModel):
 
 
 class Preference(BaseModel):
-    id: str
     device_id: str
     name: str
+    age: int 
     location: Dict[str, float]
     activities: List[str]
     topics: List[str]
