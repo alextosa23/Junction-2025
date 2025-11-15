@@ -2,7 +2,7 @@ import React from "react";
 import { Alert } from "react-native";
 import Onboarding, { OnboardingData } from "./Onboarding";
 
-const API_URL = "http://192.168.100.39:8000/preferences";
+const API_URL = "https://junction-2025.onrender.com/preferences";
 
 type PreferenceCreate = {
   device_id: string;

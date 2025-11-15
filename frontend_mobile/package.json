@@ -13,6 +13,7 @@
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-community/geolocation": "^3.4.0",
     "expo": "~54.0.23",
+    "expo-av": "~16.0.7",
     "expo-device": "~8.0.9",
     "expo-location": "~19.0.7",
     "expo-notifications": "~0.32.12",

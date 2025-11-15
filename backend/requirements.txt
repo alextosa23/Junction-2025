@@ -2,3 +2,5 @@ fastapi
 uvicorn[standard]
 firebase-admin
 pydantic-settings
+google-cloud-speech
+python-multipart

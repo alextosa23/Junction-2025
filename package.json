@@ -1,5 +1,12 @@
 {
   "dependencies": {
-    "@react-native-community/datetimepicker": "^8.5.0"
+    "@react-native-community/datetimepicker": "^8.5.0",
+    "@react-native-voice/voice": "^3.2.4",
+    "expo-av": "^16.0.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.5",
+    "@types/react-native": "^0.72.8",
+    "typescript": "^5.9.3"
   }
 }
