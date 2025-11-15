@@ -12,8 +12,10 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-type RecurrenceType = "once" | "daily";
+import {
+  scheduleEventNotification,
+  RecurrenceType,
+} from "../services/notifications";
 
 type AddEventProps = {
   onSave?: (event: { title: string; date: Date; recurrence: RecurrenceType }) => void;
@@ -32,13 +34,25 @@ const AddEvent: React.FC<AddEventProps> = ({ onSave, onBack }) => {
   const handleSave = async () => {
     if (title.trim().length === 0) return;
 
-    // Build event object to store
+    // 1) Schedule notification for this event
+    let notificationId: string | null = null;
+    try {
+      notificationId = await scheduleEventNotification({
+        title,
+        date,
+        recurrence,
+      });
+    } catch (e) {
+      console.warn("Failed to schedule notification", e);
+    }
+
+    // 2) Build event object to store
     const newEvent = {
       id: Date.now().toString(),
       title,
       date: date.toISOString(),
       recurrence,
-      // notificationId can be added later when you wire notifications in a separate file
+      notificationId, // can be null if scheduling failed
     };
 
     try {
@@ -48,14 +62,11 @@ const AddEvent: React.FC<AddEventProps> = ({ onSave, onBack }) => {
 
       await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(updatedEvents));
 
-      // Let parent know (if it cares)
       if (onSave) {
         onSave({ title, date, recurrence });
       }
 
-      // Reset UI a bit
       setTitle("");
-      // setDate(new Date()); // uncomment if you want to reset date too
     } catch (err) {
       console.warn("Error saving event", err);
     }

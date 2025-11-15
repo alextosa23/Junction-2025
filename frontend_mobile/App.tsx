@@ -9,6 +9,9 @@ import * as Notifications from "expo-notifications";
 import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
 import AddEvent from "./src/screens/AddEvent";
 import EventsScreen from "./src/screens/EventsScreen"; // ✅ NEW: import events list
+import { registerForNotificationsAsync } from "./src/services/notifications";
+
+
 
 type AppState = {
   hasCompletedOnboarding: boolean;
@@ -42,6 +45,10 @@ export default function App() {
   // 🔹 NEW: which “extra” screen to show from CategorySelection
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showEvents, setShowEvents] = useState(false); // ✅ NEW
+
+  useEffect(() => {
+    registerForNotificationsAsync();
+  }, []);
 
   useEffect(() => {
     const loadAppState = async () => {

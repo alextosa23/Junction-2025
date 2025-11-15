@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -13,7 +13,7 @@ import * as Location from "expo-location";
 export type OnboardingData = {
   name: string;
   age: string;
-  location: string;
+  location: string; // will store "lat, lon"
   activities: string[];
   topics: string[];
   chatTime: string | null;
@@ -69,7 +69,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
 
   const [name, setName] = useState<string>("");
   const [age, setAge] = useState<string>("");
-  const [location, setLocation] = useState<string>("");
+  const [location, setLocation] = useState<string>(""); // stores "lat, lon"
 
   const [activities, setActivities] = useState<string[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
@@ -79,6 +79,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
 
   // location-related state
   const [coords, setCoords] = useState<Coords | null>(null);
+  const [cityName, setCityName] = useState<string>(""); // what we show on screen
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hasFetchedLocation, setHasFetchedLocation] = useState(false);
 
@@ -96,7 +97,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
     }
   };
 
-  // Expo location logic
+  // Expo location logic: save coords + show only city
   const getUserLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -113,14 +114,38 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
       const lat = loc.coords.latitude;
       const lon = loc.coords.longitude;
 
+      // Save coords for later use
       setCoords({ latitude: lat, longitude: lon });
-      setLocation(`${lat}, ${lon}`); // save as string for OnboardingData
+
+      // Save coords as string for onboarding data
+      setLocation(`${lat}, ${lon}`);
+
+      // Reverse-geocode just to display city/region
+      const places = await Location.reverseGeocodeAsync({
+        latitude: lat,
+        longitude: lon,
+      });
+
+      if (places.length > 0) {
+        const { city, region } = places[0];
+        const niceCity = city || region || "Unknown location";
+        setCityName(niceCity);
+      }
+
       setLocationError(null);
     } catch (err) {
       console.error("Location error", err);
       setLocationError("Could not get location");
     }
   };
+
+  // auto-run location fetch once when entering step 2
+  useEffect(() => {
+    if (step === 2 && !hasFetchedLocation) {
+      setHasFetchedLocation(true);
+      void getUserLocation();
+    }
+  }, [step, hasFetchedLocation]);
 
   const canGoNext = (): boolean => {
     switch (step) {
@@ -156,7 +181,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
     const data: OnboardingData = {
       name,
       age,
-      location,
+      location, // "lat, lon"
       activities,
       topics,
       chatTime,
@@ -208,24 +233,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onFinish }) => {
           </>
         );
       case 2:
-        // auto-run location fetch once when entering step 2
-        if (!hasFetchedLocation) {
-          setHasFetchedLocation(true);
-          void getUserLocation();
-        }
-
         return (
           <>
             <Text style={styles.questionText}>
               {coords ? "Location detected:" : "Detecting your location…"}
             </Text>
 
-            {coords && (
-              <Text style={styles.helperText}>
-                Lat: {coords.latitude}
-                {"\n"}
-                Lon: {coords.longitude}
-              </Text>
+            {coords && cityName !== "" && (
+              <Text style={styles.helperText}>{cityName}</Text>
             )}
 
             {locationError && (
