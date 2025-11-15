@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import VoiceButton from "./VoiceButton";
+import CameraButton from "./CameraButton";
 
 export type ActivityCategory = {
   id: string;
@@ -22,7 +23,8 @@ type CategorySelectionProps = {
   onCategoriesSelected: (selectedCategories: ActivityCategory[]) => void;
   onAddEvent: () => void;
   onShowEvents: () => void;
-  onOpenVoice?: () => void; // 👈 app passes this
+  onOpenVoice?: () => void;   // 🎤 optional mic handler
+  onOpenCamera?: () => void;  // 📸 optional camera handler
 };
 
 const RECOMMENDED_CATEGORIES: ActivityCategory[] = [
@@ -70,6 +72,7 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
   onAddEvent,
   onShowEvents,
   onOpenVoice,
+  onOpenCamera,
 }) => {
   const [selectedCategories, setSelectedCategories] = useState<
     ActivityCategory[]
@@ -160,6 +163,13 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
             <Text style={styles.addButtonText}>Your Events</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* 📸 Camera in bottom-left */}
+        {onOpenCamera && (
+          <View style={styles.cameraButtonContainer}>
+            <CameraButton onPress={onOpenCamera} />
+          </View>
+        )}
 
         {/* 🎤 Mic in bottom-right */}
         {onOpenVoice && (
@@ -275,6 +285,11 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "700",
+  },
+  cameraButtonContainer: {
+    position: "absolute",
+    bottom: 32,
+    left: 24,
   },
   voiceButtonContainer: {
     position: "absolute",
