@@ -31,6 +31,22 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+@app.post("/preferences", response_model=Preference)
+async def create_preference(pref: PreferenceCreate):
+    # TODO: save to DB here
+    new_id = str(uuid.uuid4())
+    return Preference(
+        id=new_id,
+        device_id=pref.device_id,
+        name=pref.name,
+        location=pref.location,
+        activities=pref.activities,
+        topics=pref.topics,
+        chat_times=pref.chat_times,
+        activity_type=pref.activity_type,
+        looking_for=pref.looking_for,
+        timestamp=datetime.utcnow(),
+    )
 
 if __name__ == "__main__":
     import uvicorn
