@@ -15,8 +15,8 @@ async def register_event(event: EventCreate):
             "description": event.description,
             "category": event.category,
             "coordinates": event.coordinates,
-            "type": event.type,
-            "schedule": event.schedule,
+            "start_date": event.start_date,
+            "end_date": event.end_date,
             "max_attendance": event.max_attendance,
             "amenities": event.amenities
         }

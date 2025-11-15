@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from pydantic import BaseModel
+from typing import Optional, Dict
 from datetime import datetime
 
 
@@ -8,8 +8,8 @@ class EventCreate(BaseModel):
     description: str
     category: str
     coordinates: Dict[str, float]
-    type: str
-    schedule: Dict[str, Any]
+    start_date: datetime
+    end_date: datetime
     max_attendance: int
     amenities: list[str]
 
@@ -19,8 +19,8 @@ class EventUpdate(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     coordinates: Optional[Dict[str, float]] = None
-    type: Optional[str] = None
-    schedule: Optional[Dict[str, Any]] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     max_attendance: Optional[int] = None
     amenities: Optional[list[str]] = None
 
@@ -31,8 +31,8 @@ class Event(BaseModel):
     description: str
     category: str
     coordinates: Dict[str, float]
-    type: str
-    schedule: Dict[str, Any]
+    start_date: datetime
+    end_date: datetime
     max_attendance: int
     amenities: list[str]
     active: bool

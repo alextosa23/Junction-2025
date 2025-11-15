@@ -6,8 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routes import events, attendances  # ⬅️ no preferences router
+from app.routes import events, attendances
+from app.routes import recommendations
 from app.models.preference import PreferenceCreate, Preference
+from app.services.firestore import get_firestore
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -58,6 +60,7 @@ app.add_middleware(
 # Include other routers
 app.include_router(events.router)
 app.include_router(attendances.router)
+app.include_router(recommendations.router)
 # ❌ do NOT include preferences.router; we're defining /preferences right here
 
 
@@ -73,14 +76,10 @@ async def health_check():
 
 @app.post("/preferences", response_model=Preference)
 async def create_preference(pref: PreferenceCreate):
-    """
-    Create or overwrite the preference document in Firestore
-    using device_id as the document ID.
-    """
-    logger.info("📩 Received /preferences payload: %s", pref.dict())
-    created_at = datetime.utcnow()
+    logger.info("/preferences payload: %s", pref.dict())
+    firestore = get_firestore()
 
-    data = {
+    preference_data = {
         "device_id": pref.device_id,
         "name": pref.name,
         "age": pref.age,
@@ -90,14 +89,11 @@ async def create_preference(pref: PreferenceCreate):
         "chat_times": pref.chat_times,
         "activity_type": pref.activity_type,
         "looking_for": pref.looking_for,
-        "timestamp": created_at,
     }
 
-    # Save to Firestore under collection "preferences"
-    doc_ref = db.collection("preferences").document(pref.device_id)
-    doc_ref.set(data)
-
-    return Preference(**data)
+    pref_id = firestore.create_preference(preference_data)
+    created = firestore.get_preference(pref_id)
+    return Preference(**created)
 
 
 if __name__ == "__main__":

@@ -21,21 +21,19 @@ class FirestoreService:
     
     def create_event(self, event_data: Dict[str, Any]) -> str:
         event_id = f"evt_{uuid.uuid4().hex[:12]}"
-        
         event = {
             "id": event_id,
             "name": event_data.get("name"),
             "description": event_data.get("description"),
             "category": event_data.get("category"),
             "coordinates": event_data.get("coordinates"),
-            "type": event_data.get("type"),
-            "schedule": event_data.get("schedule"),
+            "start_date": event_data.get("start_date"),
+            "end_date": event_data.get("end_date"),
             "max_attendance": event_data.get("max_attendance"),
             "amenities": event_data.get("amenities"),
             "active": True,
             "timestamp": datetime.utcnow()
         }
-        
         self.db.collection(self.collection_name).document(event_id).set(event)
         return event_id
     
@@ -87,6 +85,7 @@ class FirestoreService:
             "id": preference_id,
             "device_id": preference_data.get("device_id"),
             "name": preference_data.get("name"),
+            "age": preference_data.get("age"),
             "location": preference_data.get("location"),
             "activities": preference_data.get("activities"),
             "topics": preference_data.get("topics"),
@@ -112,6 +111,22 @@ class FirestoreService:
     def delete_preference(self, preference_id: str) -> bool:
         self.db.collection(self.preferences_collection).document(preference_id).delete()
         return True
+
+    def list_events(self) -> list[Dict[str, Any]]:
+        query = self.db.collection(self.collection_name).where("active", "==", True)
+        return [doc.to_dict() for doc in query.stream()]
+
+    def list_attendances_by_device(self, device_id: str) -> list[Dict[str, Any]]:
+        query = self.db.collection(self.attendances_collection).where("device_id", "==", device_id)
+        return [doc.to_dict() for doc in query.stream()]
+
+    def get_preference_by_device(self, device_id: str) -> Optional[Dict[str, Any]]:
+        # preference documents may not use device_id as document id; query by field
+        query = self.db.collection(self.preferences_collection).where("device_id", "==", device_id).limit(1)
+        docs = list(query.stream())
+        if docs:
+            return docs[0].to_dict()
+        return None
 
 
 _firestore_service = None
