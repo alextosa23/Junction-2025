@@ -7,7 +7,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Onboarding, { OnboardingData } from "./src/screens/Onboarding";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CategorySelection from "./src/screens/CategorySelection";
+<<<<<<< HEAD
 import OnboardingScreen from "./src/screens/OnboardingScreen"; // ✅ use this
+=======
+import AddEvent from "./src/screens/AddEvent";
+>>>>>>> 93171df (add event)
 
 type AppState = {
   hasCompletedOnboarding: boolean;
@@ -27,6 +31,7 @@ export default function App() {
     profile: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [showAddEvent, setShowAddEvent] = useState(false);
 
   useEffect(() => {
     const loadAppState = async () => {
@@ -110,7 +115,7 @@ export default function App() {
   }
 
   // User completed onboarding but hasn't selected categories
-  if (!appState.hasSelectedCategories) {
+  /*if (!appState.hasSelectedCategories) {
     return (
       <CategorySelection
         userData={appState.profile}
@@ -120,13 +125,56 @@ export default function App() {
         }}
       />
     );
+  }*/
+
+  if (showAddEvent) {
+    return (
+      <AddEvent
+        onSave={(event) => {
+          console.log("Saved event:", event);
+          setShowAddEvent(false); // Go back to category selection
+        }}
+      />
+    );
   }
 
+<<<<<<< HEAD
   // Main app
+=======
+  /*return (
+    <CategorySelection
+      userData={appState.profile}
+      onCategoriesSelected={(selectedCategories) => {
+        console.log("Selected categories:", selectedCategories);
+        saveAppState({ hasSelectedCategories: true });
+      }}
+      onAddEvent={() => setShowAddEvent(true)} 
+    />
+  );*/
+
+  if (!appState.hasSelectedCategories) {
+    return (
+      <CategorySelection
+        userData={appState.profile}
+        onCategoriesSelected={(categories) =>
+          saveAppState({ hasSelectedCategories: true })
+        }
+        onAddEvent={() => setShowAddEvent(true)}  
+      />
+    );
+  }
+
+  
+
+  // Main app - user has completed everything
+
+>>>>>>> 93171df (add event)
   return (
     <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Main App Screen</Text>
-      <Text style={{ fontSize: 16, marginTop: 20 }}>Welcome back, {appState.profile.name}!</Text>
+      <Text style={{ fontSize: 16, marginTop: 20 }}>
+        Welcome back, {appState.profile?.name}!
+      </Text>
       <Text style={{ fontSize: 14, marginTop: 10, textAlign: 'center' }}>
         This is where the main voice companion interface will be.
       </Text>
