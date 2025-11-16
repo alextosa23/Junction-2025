@@ -26,6 +26,7 @@ type CategorySelectionProps = {
   onShowEvents: () => void;
   onOpenVoice?: () => void;
   onOpenCamera?: () => void;
+  onOpenSettings?: () => void;
 };
 
 const RECOMMENDED_CATEGORIES: ActivityCategory[] = [
@@ -44,6 +45,7 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
   onShowEvents,
   onOpenVoice,
   onOpenCamera,
+  onOpenSettings,
 }) => {
 
   // ✔ Only ONE selected category (stores the name)
@@ -60,7 +62,25 @@ export const CategorySelection: React.FC<CategorySelectionProps> = ({
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>Choose a Category</Text>
+        {/* <Text style={styles.title}>Choose a Category</Text>
+        <TouchableOpacity 
+          onPress={onOpenSettings}
+          style={{ position: "absolute", top: 20, right: 20 }}
+        >
+          <Text style={{ fontSize: 22 }}>⚙️</Text>
+        </TouchableOpacity>
+        <Text style={styles.subtitle}>
+          Select the category that interests you most.
+        </Text> */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ width: 32 }} /> {/* spacer to balance gear icon */}
+          <Text style={styles.title}>Choose a Category</Text>
+
+          <TouchableOpacity onPress={onOpenSettings}>
+            <Text style={{ fontSize: 26 }}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
+
         <Text style={styles.subtitle}>
           Select the category that interests you most.
         </Text>
