@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -7,15 +7,16 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
-
 } from "react-native";
 import type { OnboardingData } from "./Onboarding";
+
+const API_BASE_URL = "https://junction-2025.onrender.com";
 
 type UserProfileScreenProps = {
   initialData: OnboardingData;
   onBack: () => void;
   onSave: (data: OnboardingData) => void;
+  preferenceId: string;
 };
 
 const activityOptions = [
@@ -56,10 +57,11 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   initialData,
   onBack,
   onSave,
+  preferenceId,
 }) => {
   const [name, setName] = useState(initialData.name);
   const [age, setAge] = useState(initialData.age);
-  const [location, setLocation] = useState(initialData.location);
+  const [location, setLocation] = useState(initialData.location); // "lat, lng"
   const [activities, setActivities] = useState<string[]>(initialData.activities);
   const [topics, setTopics] = useState<string[]>(initialData.topics);
   const [chatTime, setChatTime] = useState<string | null>(initialData.chatTime);
@@ -67,6 +69,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
     initialData.activityPlace
   );
   const [goals, setGoals] = useState<string[]>(initialData.goals);
+
+  const [loading, setLoading] = useState(false);
 
   const toggleMultiSelect = (
     value: string,
@@ -80,64 +84,150 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
     }
   };
 
-const handleSave = async () => {
-  // 1) Update local OnboardingData for the app
-  const updated: OnboardingData = {
-    name,
-    age,
-    location,      // still a string for the UI
-    activities,
-    topics,
-    chatTime,
-    activityPlace,
-    goals,
-  };
+  // Fetch preference on mount to autocomplete the form
+  useEffect(() => {
+    const fetchPreference = async () => {
+      if (!preferenceId) return;
+      setLoading(true);
+      try {
+        const url = `${API_BASE_URL}/preferences/${preferenceId}`;
+        console.log("🔎 [UserProfileScreen] GET", url);
+        const res = await fetch(url);
 
-  // 2) Build backend payload (matches PreferenceCreate)
-  // For now we send dummy coords; you can later plug in real ones
-const payload = {
-  device_id: "demo-device-id-123",
-  name,
-  location: {
-    lat: 0.0,
-    lng: 0.0,
-  },
-  activities,
-  topics,
-  chat_times: chatTime ? [chatTime] : [],
-  activity_type: activityPlace ?? "",
-  looking_for: goals,
-};
+        if (!res.ok) {
+          const txt = await res.text();
+          console.error("GET preference error:", res.status, txt);
+          return;
+        }
 
+        const pref = await res.json();
+        console.log("✅ Loaded preference:", pref);
 
-  try {
-    const res = await fetch("/{preference_id}", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+        setName(pref.name ?? "");
+        setAge(pref.age != null ? String(pref.age) : "");
 
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("Backend error:", txt);
-      Alert.alert("Error", "Could not save your changes to the server.");
-      // still call onSave so the UI updates
-      onSave(updated);
+        // location is an object { latitude, longitude }
+        if (pref.location && typeof pref.location === "object") {
+          const lat = pref.location.latitude;
+          const lng = pref.location.longitude;
+          if (lat != null && lng != null) {
+            setLocation(`${lat}, ${lng}`);
+          } else {
+            setLocation("");
+          }
+        } else {
+          setLocation("");
+        }
+
+        setActivities(Array.isArray(pref.activities) ? pref.activities : []);
+        setTopics(Array.isArray(pref.topics) ? pref.topics : []);
+
+        if (Array.isArray(pref.chat_times) && pref.chat_times.length > 0) {
+          setChatTime(pref.chat_times[0]);
+        } else {
+          setChatTime(null);
+        }
+
+        setActivityPlace(pref.activity_type ?? null);
+        setGoals(Array.isArray(pref.looking_for) ? pref.looking_for : []);
+      } catch (e) {
+        console.error("Network error fetching preference:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPreference();
+  }, [preferenceId]);
+
+  const handleSave = async () => {
+    // 1) Build the updated onboarding data for the app
+    const updated: OnboardingData = {
+      name,
+      age,
+      location,
+      activities,
+      topics,
+      chatTime,
+      activityPlace,
+      goals,
+    };
+
+    // 2) Validate / parse age
+    const ageNumber = parseInt(age, 10);
+    if (Number.isNaN(ageNumber)) {
+      console.warn("[UserProfileScreen] Invalid age:", age);
       return;
     }
 
-    const json = await res.json();
-    console.log("Preference saved from profile screen:", json);
+    // 3) Parse location string into latitude/longitude
+    let latitude = NaN;
+    let longitude = NaN;
 
-    Alert.alert("Changes saved", "Your preferences have been saved.");
-    onSave(updated); // let the parent know about the new values
-  } catch (e) {
-    console.error("Network error:", e);
-    Alert.alert("Error", "Could not contact the server.");
-    onSave(updated);
-  }
-};
+    if (location) {
+      const parts = location.split(",");
+      if (parts.length === 2) {
+        latitude = parseFloat(parts[0].trim());
+        longitude = parseFloat(parts[1].trim());
+      }
+    }
 
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      console.warn(
+        "[UserProfileScreen] Location parse error. Expected 'lat, lng', got:",
+        location
+      );
+      return;
+    }
+
+    // 4) Build backend payload
+    const payload = {
+      name,
+      age: ageNumber,
+      location: {
+        latitude,
+        longitude,
+      },
+      activities,
+      topics,
+      chat_times: chatTime ? [chatTime] : [],
+      activity_type: activityPlace ?? "",
+      looking_for: goals,
+    };
+
+    const url = `${API_BASE_URL}/preferences/${preferenceId}`;
+    console.log("📤 [UserProfileScreen] PUT", url);
+    console.log("📦 [UserProfileScreen] payload:", payload);
+
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      console.log(
+        "📥 [UserProfileScreen] Backend responded with status:",
+        res.status
+      );
+
+      if (!res.ok) {
+        const txt = await res.text();
+        console.error("❌ [UserProfileScreen] Backend error:", res.status, txt);
+        // still update local state for now
+        onSave(updated);
+        return;
+      }
+
+      const json = await res.json();
+      console.log("✅ [UserProfileScreen] Preference saved:", json);
+
+      onSave(updated);
+    } catch (e: any) {
+      console.error("🌐 [UserProfileScreen] Network error:", e);
+      onSave(updated);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -154,6 +244,12 @@ const payload = {
         contentContainerStyle={{ paddingBottom: 32 }}
         keyboardShouldPersistTaps="handled"
       >
+        {loading && (
+          <Text style={{ marginBottom: 12, color: "#6B7280" }}>
+            Loading your preferences...
+          </Text>
+        )}
+
         {/* About you */}
         <Text style={styles.sectionTitle}>About you</Text>
 
@@ -181,7 +277,7 @@ const payload = {
           style={styles.input}
           value={location}
           onChangeText={setLocation}
-          placeholder="City / area"
+          placeholder="Latitude, Longitude (e.g. 60.17, 24.94)"
           placeholderTextColor="#6B7280"
         />
 
@@ -247,7 +343,6 @@ const payload = {
           />
         ))}
 
-      
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Save changes</Text>
         </TouchableOpacity>
