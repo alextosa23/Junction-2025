@@ -14,12 +14,14 @@ import VoiceScreen from "./src/screens/VoiceScreen";
 import CameraButton from "./src/screens/CameraButton";
 import PhotoHelpScreen from "./src/screens/PhotoHelpScreen";
 import CategoryEvents from "./src/screens/CategoryEvents";
+import UserProfileScreen from "./src/screens/UserProfileScreen";
+
 
 type AppState = {
   hasCompletedOnboarding: boolean;
   hasSelectedCategories: boolean;
   profile: OnboardingData | null;
-  selectedCategorie: String | null;
+  selectedCategorie: string | null;
 };
 
 Notifications.setNotificationHandler({
@@ -48,6 +50,7 @@ export default function App() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [showPhotoHelp, setShowPhotoHelp] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const [showVoice, setShowVoice] = useState(false); // controls VoiceScreen
 
@@ -167,6 +170,19 @@ export default function App() {
     );
   }
 
+  if (showProfile) {
+    return (
+      <UserProfileScreen
+        initialData={appState.profile!}
+        onBack={() => setShowProfile(false)}
+        onSave={(newProfile) => {
+          saveAppState({ profile: newProfile });
+          setShowProfile(false);
+        }}
+      />
+    );
+  }
+
   if (!appState.hasSelectedCategories) {
     return (
       <CategorySelection
@@ -183,6 +199,10 @@ export default function App() {
         onAddEvent={() => setShowAddEvent(true)}
         onOpenVoice={() => setShowVoice(true)}
         onOpenCamera={() => setShowPhotoHelp(true)}
+        onOpenSettings={() => {
+          console.log("OPEN SETTINGS");
+          setShowProfile(true);
+        }}
       />
     );
   }
